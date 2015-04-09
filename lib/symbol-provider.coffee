@@ -89,7 +89,22 @@ class SymbolProvider
         else
           @config[type].suggestions = null
 
-    return
+    if builtinSuggestions = @legacyCompletionsForScopeDescriptor(scopeDescriptor)
+      @config.builtin = {suggestions: builtinSuggestions}
+
+  legacyCompletionsForScopeDescriptor: (scopeDescriptor) ->
+    completions = @settingsForScopeDescriptor(scopeDescriptor, "editor.completions")
+    scopedCompletions = null
+    for {value} in completions
+      for suggestion in value when value?
+        scopedCompletions ?= []
+        scopedCompletions.push
+          text: suggestion
+          type: 'builtin'
+    scopedCompletions = _.uniq(scopedCompletions, @uniqueFilter) if scopedCompletions?
+    scopedCompletions
+
+  uniqueFilter: (completion) -> completion.text
 
   paneItemIsValid: (paneItem) ->
     return false unless paneItem?
@@ -120,9 +135,7 @@ class SymbolProvider
     return unless @symbolStore.getLength()
 
     @buildConfigIfScopeChanged(options)
-
-    # Merge the scope specific words into the default word list
-    symbolList = @symbolStore.symbolsForConfig(@config).concat(@builtinCompletionsForCursorScope())
+    symbolList = @symbolStore.symbolsForConfig(@config)
 
     words =
       if atom.config.get("autocomplete-plus.strictMatching")
@@ -171,19 +184,6 @@ class SymbolProvider
 
   settingsForScopeDescriptor: (scopeDescriptor, keyPath) ->
     atom.config.getAll(keyPath, scope: scopeDescriptor)
-
-  builtinCompletionsForCursorScope: =>
-    cursorScope = @editor.scopeDescriptorForBufferPosition(@editor.getCursorBufferPosition())
-    completions = @settingsForScopeDescriptor(cursorScope, "editor.completions")
-    scopedCompletions = []
-    for properties in completions
-      if suggestions = _.valueForKeyPath(properties, "editor.completions")
-        for suggestion in suggestions
-          scopedCompletions.push
-            text: suggestion
-            type: 'builtin'
-
-    _.uniq scopedCompletions, (completion) -> completion.text
 
   ###
   Section: Word List Building
