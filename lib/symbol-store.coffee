@@ -50,6 +50,7 @@ class Symbol
     unless @type?
       typePriority = 0
       for type, options of config
+        continue unless options.selectors?
         for filePath, {scopeChains} of @metadataByPath
           for scopeChain, __ of scopeChains
             if (!@type or options.typePriority > typePriority) and selectorsMatchScopeChain(options.selectors, scopeChain)
@@ -79,6 +80,8 @@ class SymbolStore
     symbols = []
     for symbolKey, symbol of @symbolMap
       symbols.push(symbol) if symbol.appliesToConfig(config)
+    for type, options of config
+      symbols = symbols.concat(options.suggestions) if options.suggestions
     symbols
 
   addToken: (token, editorPath, bufferRow) =>
